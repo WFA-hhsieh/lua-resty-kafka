@@ -31,3 +31,6 @@ devdown:
 
 devshell:
 	docker-compose -f dev/docker-compose.yaml  -f dev/docker-compose.dev.yaml exec openresty /bin/bash
+
+devlogs:
+	docker-compose -f dev/docker-compose.yaml  -f dev/docker-compose.dev.yaml logs -f
