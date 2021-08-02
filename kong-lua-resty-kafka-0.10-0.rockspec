@@ -12,6 +12,7 @@ description = {
 
      * mTLS support
      * SASL (PLAIN) support
+     * SASL (SCRAM-SHA-256) support
 
      This Lua library requires to patch OpenResty with changes made in lua-ngx-module by this PR:
      https://github.com/openresty/lua-nginx-module/pull/1602

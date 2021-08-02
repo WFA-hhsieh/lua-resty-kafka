@@ -40,6 +40,7 @@ comes with a set of additional features.
 * mTLS support
 * SASL support
   * PLAIN
+  * SCRAM-SHA-256
 
 For these features to work you need a patched version of openresty. [See this source](https://github.com/Kong/kong-build-tools/tree/master/openresty-patches/patches/1.19.3.2)
 
@@ -193,12 +194,12 @@ client config
 
         local auth_config = { 
             strategy = "sasl", 
-            mechanism="PLAIN", 
+            mechanism="PLAIN", -- [oneOf = ['PLAIN', 'SCRAM-SHA-256']]
             user="admin", 
             password="admin-secret"
             }
     ```
-    All seen fields are required. Note that only SASL/PLAIN is currently supported.
+    All seen fields are required.
 
 [Back to TOC](#table-of-contents)
 
