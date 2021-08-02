@@ -28,7 +28,8 @@ description = {
    license = "BSD"
 }
 dependencies = {
-   "lua >= 5.1"
+   "lua >= 5.1",
+   "lua-resty-openssl"
 }
 build = {
    type = "builtin",
