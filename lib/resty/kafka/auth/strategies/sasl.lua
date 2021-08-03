@@ -43,13 +43,13 @@ local function _encode_plaintext(user, pwd)
     return (SEP..user)..(SEP..pwd)
 end
 
-local function _encode(mechanism, user, pwd)
+local function _encode(mechanism, user, pwd, tokenauth)
     if mechanism  == MECHANISM_PLAINTEXT then
         return _encode_plaintext(user, pwd)
     elseif mechanism== MECHANISM_SCRAMSHA256 then
         -- constructing the client-first-message
         user = normalize_username(user)
-        return "n,,n="..user..",r="..c_nonce
+        return "n,,n="..user..",r="..c_nonce..",tokenauth=" .. tokenauth
     else
         return ""
     end
@@ -251,7 +251,8 @@ local function _sasl_auth(self, sock)
     local mechanism = self.config.mechanism
     local user = self.config.user
     local password = self.config.password
-    local msg = _encode(mechanism, user, password)
+    local tokenauth = tostring(self.config.tokenauth) or "false"
+    local msg = _encode(mechanism, user, password, tokenauth)
     req:bytes(msg)
 
     local resp, err = _sock_send_receive(sock, req)
@@ -273,7 +274,7 @@ local function _sasl_auth(self, sock)
         -- TODO: usernames and passwords need to be UTF-8
         local nonce = "r=" .. c_nonce
         local username = "n=" .. user
-        local client_first_message_bare = username .. "," .. nonce
+        local client_first_message_bare = username .. "," .. nonce .. ",tokenauth=" .. tokenauth
 
         local plus = false
         local bare = false
