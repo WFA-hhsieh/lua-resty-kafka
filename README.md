@@ -41,6 +41,7 @@ comes with a set of additional features.
 * SASL support
   * PLAIN
   * SCRAM-SHA-256
+  * Delegation Tokens
 
 For these features to work you need a patched version of openresty. [See this source](https://github.com/Kong/kong-build-tools/tree/master/openresty-patches/patches/1.19.3.2)
 
@@ -196,7 +197,8 @@ client config
             strategy = "sasl", 
             mechanism="PLAIN", -- [oneOf = ['PLAIN', 'SCRAM-SHA-256']]
             user="admin", 
-            password="admin-secret"
+            password="admin-secret",
+            tokenauth="true" -- <bool> needs to be "true" when authenticating with delegation tokens, defaults to "false"
             }
     ```
     All seen fields are required.
