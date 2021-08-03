@@ -1,5 +1,5 @@
 
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 
 ENV DEBIAN_FRONTEND noninteractive
@@ -10,7 +10,7 @@ RUN    echo "deb-src http://archive.ubuntu.com/ubuntu bionic main" >> /etc/apt/s
 RUN    sed 's/main$/main universe/' -i /etc/apt/sources.list
 RUN    apt-get update
 RUN    apt-get upgrade -y
-RUN    apt-get -y install wget vim git libpq-dev tcpdump luarocks
+RUN    apt-get -y install wget vim git libpq-dev tcpdump lua5.1 liblua5.1-dev unzip
 
 # Openresty (Nginx)
 RUN  apt-get -y build-dep nginx \
@@ -32,8 +32,12 @@ RUN ln -s /usr/local/openresty/nginx/sbin/nginx /usr/sbin/nginx
 COPY ./reload_nginx.sh /usr/local/openresty/bin/nginxReloader.sh
 COPY ./docker-entrypoint.sh /usr/local/openresty/bin/docker-entrypoint.sh
 
+
+RUN wget https://luarocks.org/releases/luarocks-3.3.1.tar.gz 
+RUN tar zxpf luarocks-3.3.1.tar.gz && cd luarocks-3.3.1 && ./configure && make && make install
 RUN luarocks install busted 
 RUN luarocks install inspect
+RUN luarocks install lua-resty-openssl
 
 RUN chmod +x /usr/local/openresty/bin/nginxReloader.sh
 RUN chmod +x /usr/local/openresty/bin/docker-entrypoint.sh

@@ -63,6 +63,7 @@ function _M.send_receive(self, request)
     if not ok then
         return nil, err, true
     end
+
     if self.config.ssl then
         -- TODO: add reused_session for better performance of short-lived connections
         local opts = {
@@ -70,7 +71,7 @@ function _M.send_receive(self, request)
             client_cert = self.config.client_cert,
             client_priv_key = self.config.client_priv_key,
         }
-        
+
         -- TODO END
         local _, err = sock:tlshandshake(opts)
         if err then

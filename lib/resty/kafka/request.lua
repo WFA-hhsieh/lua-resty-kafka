@@ -35,6 +35,7 @@ _M.ConsumerMetadataRequest = 10
 _M.ApiVersions = 18
 _M.SaslHandshakeRequest=17
 _M.SaslAuthenticateRequest = 36
+_M.CreateDelegationTokenRequest = 38
 
 
 
