@@ -1,8 +1,8 @@
 package = "kong-lua-resty-kafka"
-version = "0.10-0"
+version = "0.11-0"
 source = {
    url = "git://github.com/kong/lua-resty-kafka",
-   tag = "v0.10"
+   tag = "v0.11"
 }
 description = {
    summary = "Lua Kafka client driver for the ngx_lua based on the cosocket API",
@@ -13,6 +13,7 @@ description = {
      * mTLS support
      * SASL (PLAIN) support
      * SASL (SCRAM-SHA-256) support
+     * SASL (SCRAM-SHA-256) Delegation Token support
 
      This Lua library requires to patch OpenResty with changes made in lua-ngx-module by this PR:
      https://github.com/openresty/lua-nginx-module/pull/1602
