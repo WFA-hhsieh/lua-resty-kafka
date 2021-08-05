@@ -57,10 +57,11 @@ end
 function create_topics()
     -- Not interested in the output
     local p = producer:new(broker_list_plain)
-    for i=1,1000 do
-        p:send(TEST_TOPIC, KEY, MESSAGE)
-        p:send(TEST_TOPIC_1, KEY, MESSAGE)
+    for i=1,10 do
+        p:send(TEST_TOPIC, KEY, "creating_topics for " .. TEST_TOPIC )
+        p:send(TEST_TOPIC_1, KEY, "creating_topics for " .. TEST_TOPIC_1)
     end
+    ngx.sleep(2)
 end
 
 return {
