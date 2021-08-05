@@ -8,6 +8,7 @@ local to_int32 = response.to_int32
 local setmetatable = setmetatable
 local tcp = ngx.socket.tcp
 
+local ngx_log = ngx.log
 
 local _M = {}
 local mt = { __index = _M }
@@ -56,6 +57,7 @@ function _M.send_receive(self, request)
     if not sock then
         return nil, err, true
     end
+    local keepalive = self.config.keepalive or false
 
     sock:settimeout(self.config.socket_timeout)
 
@@ -75,7 +77,6 @@ function _M.send_receive(self, request)
         -- TODO END
         local _, err = sock:tlshandshake(opts)
         if err then
-            ngx.say(err)
             return nil, "failed to do SSL handshake with " ..
                         self.host .. ":" .. tostring(self.port) .. ": " .. err, true
         end
@@ -98,8 +99,11 @@ function _M.send_receive(self, request)
         end
     end
 
-    local data, err, f  = _sock_send_receive(sock, request)
-    sock:setkeepalive(self.config.keepalive_timeout, self.config.keepalive_size)
+    local data, err, f = _sock_send_receive(sock, request)
+    if keepalive then
+        ngx_log(ngx.DEBUG, "storing sock in pool to keep-alive")
+        sock:setkeepalive(self.config.keepalive_timeout, self.config.keepalive_size)
+    end
     return data, err, f
 end
 

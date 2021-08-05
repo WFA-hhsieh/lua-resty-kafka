@@ -158,6 +158,9 @@ client config
 
     Specifies the network timeout threshold in milliseconds. *SHOULD* lagrer than the `request_timeout`.
 
+* `keepalive`
+    Enable TCP keep-alives on broker sockets
+
 * `keepalive_timeout`
 
     Specifies the maximal idle timeout (in milliseconds) for the keepalive connection.
@@ -249,7 +252,7 @@ It's recommend to use async producer_type.
 
 An optional options table can be specified. The following options are as follows:
 
-`socket_timeout`, `keepalive_timeout`, `keepalive_size`, `refresh_interval`, `ssl`, `ssl_verify`  are the same as in `client_config`
+`socket_timeout`, `keepalive`, `keepalive_timeout`, `keepalive_size`, `refresh_interval`, `ssl`, `ssl_verify`  are the same as in `client_config`
 
 producer config, most like in <http://kafka.apache.org/documentation.html#producerconfigs>
 
