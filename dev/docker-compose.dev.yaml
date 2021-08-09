@@ -1,12 +1,11 @@
-version: '2.1'
+version: '3.5'
 services:
   openresty:
     build: openresty/
     container_name: dev_openresty
     hostname: test
     depends_on:
-      rest-proxy:
-        condition: service_healthy
+      - rest-proxy
     ports:
       - "8080:8081"
     volumes:
