@@ -9,8 +9,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - name: set permissions 
+        run: sudo chown -R $(id -u):$(id -g) dev/tokens
       - name: Setup environment
         run: make devup
+      - name: Create delegation tokens
+        run: make delegation-token
       - name: Run busted tests
         run: make test
       - name: Get logs

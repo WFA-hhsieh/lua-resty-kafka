@@ -27,15 +27,18 @@ setup-certs:
 devup: setup-certs
 	docker-compose -f dev/docker-compose.yaml  -f dev/docker-compose.dev.yaml up -d
 
-test: devup 
-	docker-compose -f dev/docker-compose.yaml  -f dev/docker-compose.dev.yaml exec openresty luarocks make
-	docker-compose -f dev/docker-compose.yaml  -f dev/docker-compose.dev.yaml exec -e TOKENID=$(TOKENID) -e TOKENHMAC=$(TOKENHMAC) openresty busted
+test: devup
+	docker-compose -f dev/docker-compose.yaml -f dev/docker-compose.dev.yaml exec -T openresty luarocks make
+	docker-compose -f dev/docker-compose.yaml -f dev/docker-compose.dev.yaml exec -T -e TOKENID=$(TOKENID) -e TOKENHMAC=$(TOKENHMAC) openresty busted
 
 devdown:
-	docker-compose -f dev/docker-compose.yaml  -f dev/docker-compose.dev.yaml down --remove-orphans
+	docker-compose -f dev/docker-compose.yaml -f dev/docker-compose.dev.yaml down --remove-orphans
 
 devshell:
-	docker-compose -f dev/docker-compose.yaml  -f dev/docker-compose.dev.yaml exec openresty /bin/bash
+	docker-compose -f dev/docker-compose.yaml -f dev/docker-compose.dev.yaml exec openresty /bin/bash
 
 devlogs:
-	docker-compose -f dev/docker-compose.yaml  -f dev/docker-compose.dev.yaml logs -f
+	docker-compose -f dev/docker-compose.yaml -f dev/docker-compose.dev.yaml logs
+
+delegation-token:
+	docker-compose -f dev/docker-compose.yaml -f dev/docker-compose.dev.yaml run create-delegation-token
