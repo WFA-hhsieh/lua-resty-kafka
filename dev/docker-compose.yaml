@@ -1,5 +1,4 @@
-
-version: '2.1'
+version: '3.5'
 services:
 
   zookeeper:
@@ -32,6 +31,28 @@ services:
         kafka-configs --bootstrap-server broker:9092 --alter --add-config 'SCRAM-SHA-256 =[iterations=4096,password=client-password]' --entity-type users --entity-name client;"
     healthcheck:
       test: nc -z broker 9092
+
+  create-delegation-token:
+    image: confluentinc/cp-kafka:6.2.0
+    networks:
+      kafka:
+    command: > 
+     /bin/bash -c "
+        while ! nc -z broker 9092;
+        do
+          echo sleeping;
+          sleep 1;
+        done;
+        kafka-delegation-tokens --bootstrap-server broker:29093 --create --max-life-time-period -1 --command-config /etc/kafka/client.config --renewer-principal User:admin | awk '/TOKENID/{getline; print}' | tr ' ' '\n'| head -2 > /etc/kafka/tokens/delegation-tokens.env"
+    healthcheck:
+      test: nc -z broker 9092
+    volumes:
+      - ./truststore:/etc/kafka/secrets/truststore
+      - ./keystore:/etc/kafka/secrets/keystore
+      - ./credentials:/etc/kafka/secrets/
+      - ./client.config:/etc/kafka/client.config
+      - ./tokens/:/etc/kafka/tokens
+      - ./broker-config/kafka_server_jaas.conf:/etc/kafka/kafka_server_jaas.conf
 
   broker:
     image: confluentinc/cp-kafka:6.2.0
