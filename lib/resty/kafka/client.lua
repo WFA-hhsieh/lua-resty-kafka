@@ -261,8 +261,15 @@ function _M.fetch_metadata(self, topic)
         return brokers, partitions
     end
 
-    _fetch_metadata(self, topic)
-    _fetch_apiversions(self)
+    -- raise if not ok and err
+    local ok_meta, err_meta = _fetch_metadata(self, topic)
+    if not ok_meta and err_meta then
+        return nil, err_meta
+    end
+    local ok_apiver, err_apiver = _fetch_apiversions(self)
+    if not ok_apiver and err_apiver then
+        return nil, err_apiver
+    end
 
     return _metadata_cache(self, topic)
 end
