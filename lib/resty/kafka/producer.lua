@@ -27,6 +27,7 @@ local pairs = pairs
 local API_VERSION_V0 = 0
 local API_VERSION_V1 = 1
 local API_VERSION_V2 = 2
+local API_VERSION_V3 = 3
 
 local ok, new_tab = pcall(require, "table.new")
 if not ok then
@@ -62,8 +63,11 @@ end
 
 local function produce_encode(self, topic_partitions)
     local req = request:new(request.ProduceRequest,
-                            correlation_id(self), self.client.client_id, request.API_VERSION_V1)
+                            correlation_id(self), self.client.client_id, API_VERSION_V3)
 
+    -- req:nullable_str()
+    -- Add a (NULL) transactional_id
+    req:int16(-1)
     req:int16(self.required_acks)
     req:int32(self.request_timeout)
     req:int32(topic_partitions.topic_num)
@@ -105,7 +109,7 @@ local function produce_decode(resp)
                     offset = resp:int64(),
                 }
 
-            elseif api_version == API_VERSION_V2 then
+            elseif api_version == API_VERSION_V2 or api_version == API_VERSION_V3 then
                 ret[topic][partition] = {
                     errcode = resp:int16(),
                     offset = resp:int64(),
@@ -180,7 +184,7 @@ local function _send(self, broker_conf, topic_partitions)
                         local index = sendbuffer:err(topic, partition_id, err, retryable0)
 
                         ngx_log(INFO, "retry to send messages to kafka err: ", err, ", retryable: ", retryable0,
-                            ", topic: ", topic, ", partition_id: ", partition_id, ", length: ", index / 2)
+                            ", topic: ", topic, ", partition_id: ", partition_id, ", length: ", index)
                     end
                 end
             end
@@ -324,28 +328,32 @@ function _M.new(self, broker_list, producer_config, cluster_name)
     local name = cluster_name or DEFAULT_CLUSTER_NAME
     local opts = producer_config or {}
     local async = opts.producer_type == "async"
+    -- default to api_version_v3
+    local api_version = opts.api_version or API_VERSION_V3
     if async and cluster_inited[name] then
         return cluster_inited[name]
     end
 
     local cli = client:new(broker_list, opts)
+    -- Supported API versions obtained from a broker are only valid for the connection on which that information is obtained. In the event of disconnection, the client should obtain the information from the broker again, as the broker might have been upgraded/downgraded in the mean time.
+    cli:fetch_apiversions()
 
-    if opts.api_version and cli.supported_api_versions then
+    if api_version and cli.supported_api_versions then
         local producer_api_key = request.ProduceRequest
         local producer_version_map = cli.supported_api_versions[producer_api_key]
 
-        -- This module only supports version 0,1,2
-        if opts.api_version > 2 then
-            local msg = "The highest supported Producer API version is 2"
+        -- This module only supports version 0,1,2,3
+        if api_version > 3 then
+            local msg = "The highest supported Producer API version is 3"
             ngx_log(ERR, msg)
             return nil, msg
         end
 
-        -- Validates opts.api_version against supported verion for ProducerApi
-        if opts.api_version < producer_version_map.min_version or
-           opts.api_version > producer_version_map.max_version then
+        -- Validates api_version against supported verion for ProducerApi
+        if api_version < producer_version_map.min_version or
+           api_version > producer_version_map.max_version then
             local msg = "The Producer API version you requested (" ..
-                        opts.api_version .. ") is not supported by the this version of Kafka." ..
+                        api_version .. ") is not supported by the this version of Kafka." ..
                         " min_version-> " .. producer_version_map.min_version ..
                         " max_version-> " ..  producer_version_map.max_version
             ngx_log(ERR, msg)
@@ -363,7 +371,7 @@ function _M.new(self, broker_list, producer_config, cluster_name)
         required_acks = opts.required_acks or 1,
         partitioner = opts.partitioner or default_partitioner,
         error_handle = opts.error_handle,
-        api_version = opts.api_version or API_VERSION_V0,
+        api_version = api_version or API_VERSION_V0,
         async = async,
         socket_config = cli.socket_config,
         auth_config = cli.auth_config,

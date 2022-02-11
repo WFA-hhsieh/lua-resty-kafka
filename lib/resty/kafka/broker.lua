@@ -15,7 +15,8 @@ local mt = { __index = _M }
 
 
 local function _sock_send_receive(sock, request)
-    local bytes, err = sock:send(request:package())
+    local req = request:package()
+    local bytes, err = sock:send(req)
     if not bytes then
         return nil, err, true
     end
