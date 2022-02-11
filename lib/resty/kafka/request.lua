@@ -40,6 +40,7 @@ _M.CreateDelegationTokenRequest = 38
 
 
 
+
 local function str_int8(int)
     return char(band(int, 0xff))
 end
@@ -193,7 +194,7 @@ end
 
 local function message_package(key, msg, message_version)
     -- Messages are not Records (or MessageSets are not RecordBatches)
-    local key = key or "key"
+    local key = key or ""
     local key_len = #key
     local len = #msg
 
@@ -239,7 +240,7 @@ function _M.message_set(self, messages, index)
     local index = index or #messages
 
     local message_version = MESSAGE_VERSION_0
-    if self.api_key == _M.ProduceRequest and (self.api_version == _M.API_VERSION_V2 or self.api_version == _M.API_VERSION_V3) then
+    if self.api_key == _M.ProduceRequest then
         message_version = MESSAGE_VERSION_1
     end
 
@@ -269,6 +270,5 @@ function _M.package(self)
 
     return req
 end
-
 
 return _M

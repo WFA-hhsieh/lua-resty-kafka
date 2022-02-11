@@ -10,13 +10,6 @@ describe("Test producers: ", function()
       create_topics()
   end)
 
-  it("only allows ProducerAPI version <=2", function()
-    local p, err = producer:new(broker_list_plain, {api_version=3})
-    assert.is_nil(p)
-    assert.is_not_nil(err)
-    assert.is.same(err, "The highest supported Producer API version is 2")
-  end)
-
   it("sends two messages and the offset is one apart", function()
     local p, err = producer:new(broker_list_plain)
     assert.is_nil(err)
