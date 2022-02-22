@@ -418,6 +418,21 @@ or
 
 from here on, you can run `busted` to trigger the tests.
 
+Microsoft Eventhub Testing
+----------------
+
+In order to run tests against EventHub you have to set two environment variabels:
+
+* `EVENTHUB_HOST`
+
+Set this variable to what you'd set the `bootstrap.servers` value
+
+* `EVENTHUB_CREDENTIALS`
+
+Set this variable to what you'd set the `password` string (sometimes referred to `YOUR.EVENTHUBS.CONNECTION.STRING`)
+
+If both of these variables are set, tests also run against the configured endpoint.
+
 Author
 ======
 

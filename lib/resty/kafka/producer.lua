@@ -338,6 +338,9 @@ local function negotiate_api_version(supported_version_map, api_key, max_support
     -- use this if exists. Fail if min_version >= max_supported version.
 
     local version_map = supported_version_map[api_key]
+    if not version_map then
+        return nil, "Could not retrieve version map from cluster"
+    end
     local min_version = version_map.min_version
     if min_version > max_supported_ver then
         return nil, "This library does not support the minumum required API version("..min_version..") that your Kafka cluster accepts ("..max_supported_ver..")"
