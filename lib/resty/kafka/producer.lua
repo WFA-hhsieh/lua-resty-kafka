@@ -24,9 +24,12 @@ local crc32 = ngx.crc32_short
 local pcall = pcall
 local pairs = pairs
 
+local API_KEY = 0
+
 local API_VERSION_V0 = 0
 local API_VERSION_V1 = 1
 local API_VERSION_V2 = 2
+local API_VERSION_V3 = 3
 
 local ok, new_tab = pcall(require, "table.new")
 if not ok then
@@ -62,8 +65,12 @@ end
 
 local function produce_encode(self, topic_partitions)
     local req = request:new(request.ProduceRequest,
-                            correlation_id(self), self.client.client_id, request.API_VERSION_V1)
+                            correlation_id(self), self.client.client_id, self.api_version)
 
+    if self.api_version == 3 then
+        -- Add a (NULL) transactional_id
+        req:int16(-1)
+    end
     req:int16(self.required_acks)
     req:int32(self.request_timeout)
     req:int32(topic_partitions.topic_num)
@@ -105,7 +112,7 @@ local function produce_decode(resp)
                     offset = resp:int64(),
                 }
 
-            elseif api_version == API_VERSION_V2 then
+            elseif api_version == API_VERSION_V2 or api_version == API_VERSION_V3 then
                 ret[topic][partition] = {
                     errcode = resp:int16(),
                     offset = resp:int64(),
@@ -180,7 +187,7 @@ local function _send(self, broker_conf, topic_partitions)
                         local index = sendbuffer:err(topic, partition_id, err, retryable0)
 
                         ngx_log(INFO, "retry to send messages to kafka err: ", err, ", retryable: ", retryable0,
-                            ", topic: ", topic, ", partition_id: ", partition_id, ", length: ", index / 2)
+                            ", topic: ", topic, ", partition_id: ", partition_id, ", length: ", index)
                     end
                 end
             end
@@ -319,6 +326,27 @@ local function _timer_flush(premature, self)
     _flush_buffer(self)
 end
 
+local function negotiate_api_version(supported_version_map, api_key, max_supported_ver)
+    -- Strategy: choose lowest matching version
+    --
+    -- This introduces less friction with this library. Using newer
+    -- APIVersions would require adding new MessageFormats(Records and RecordBatches).
+    -- This library currenty only supportes the legacy MessageSet(Message) format.
+    -- Falling back to the oldest possible APIVersion ensures longevity of this library.
+
+    -- check cli.supported_api_versions[API_KEY] for min_version
+    -- use this if exists. Fail if min_version >= max_supported version.
+
+    local version_map = supported_version_map[api_key]
+    if not version_map then
+        return nil, "Could not retrieve version map from cluster"
+    end
+    local min_version = version_map.min_version
+    if min_version > max_supported_ver then
+        return nil, "This library does not support the minumum required API version("..min_version..") that your Kafka cluster accepts ("..max_supported_ver..")"
+    end
+    return min_version
+end
 
 function _M.new(self, broker_list, producer_config, cluster_name)
     local name = cluster_name or DEFAULT_CLUSTER_NAME
@@ -329,29 +357,12 @@ function _M.new(self, broker_list, producer_config, cluster_name)
     end
 
     local cli = client:new(broker_list, opts)
+    -- Supported API versions obtained from a broker are only valid for the connection on which that information is obtained. In the event of disconnection, the client should obtain the information from the broker again, as the broker might have been upgraded/downgraded in the mean time.
+    cli:fetch_apiversions()
 
-    if opts.api_version and cli.supported_api_versions then
-        local producer_api_key = request.ProduceRequest
-        local producer_version_map = cli.supported_api_versions[producer_api_key]
-
-        -- This module only supports version 0,1,2
-        if opts.api_version > 2 then
-            local msg = "The highest supported Producer API version is 2"
-            ngx_log(ERR, msg)
-            return nil, msg
-        end
-
-        -- Validates opts.api_version against supported verion for ProducerApi
-        if opts.api_version < producer_version_map.min_version or
-           opts.api_version > producer_version_map.max_version then
-            local msg = "The Producer API version you requested (" ..
-                        opts.api_version .. ") is not supported by the this version of Kafka." ..
-                        " min_version-> " .. producer_version_map.min_version ..
-                        " max_version-> " ..  producer_version_map.max_version
-            ngx_log(ERR, msg)
-            return nil, msg
-        end
-
+    local api_version, neg_err = negotiate_api_version(cli.supported_api_versions, API_KEY, 3)
+    if not api_version then
+        return nil, neg_err
     end
 
     local p = setmetatable({
@@ -363,7 +374,7 @@ function _M.new(self, broker_list, producer_config, cluster_name)
         required_acks = opts.required_acks or 1,
         partitioner = opts.partitioner or default_partitioner,
         error_handle = opts.error_handle,
-        api_version = opts.api_version or API_VERSION_V0,
+        api_version = api_version,
         async = async,
         socket_config = cli.socket_config,
         auth_config = cli.auth_config,

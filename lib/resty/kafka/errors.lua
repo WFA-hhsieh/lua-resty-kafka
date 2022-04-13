@@ -20,7 +20,8 @@ local _M = {
     [15]    = 'ConsumerCoordinatorNotAvailableCode',
     [16]    = 'NotCoordinatorForConsumerCode',
     [34]    = 'IllegalSaslState',
-    [63]    = 'DelegationTokenOwnerMisMatch'
+    [63]    = 'DelegationTokenOwnerMisMatch',
+    [87]    = 'InvalidRecord'
 }
 
 

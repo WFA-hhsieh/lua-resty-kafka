@@ -24,6 +24,7 @@ local MESSAGE_VERSION_1 = 1
 _M.API_VERSION_V0 = 0
 _M.API_VERSION_V1 = 1
 _M.API_VERSION_V2 = 2
+_M.API_VERSION_V3 = 3
 
 _M.ProduceRequest = 0
 _M.FetchRequest = 1
@@ -36,6 +37,7 @@ _M.ApiVersions = 18
 _M.SaslHandshakeRequest=17
 _M.SaslAuthenticateRequest = 36
 _M.CreateDelegationTokenRequest = 38
+
 
 
 
@@ -60,9 +62,9 @@ end
 
 local function str_nullable_str(str)
     if not str or #str == 0 then
-        return str_int16(-1) ,2
+        return str_int16(-1), 2
     else
-        return  str ,#str
+        return str, #str
     end
 end
 
@@ -143,6 +145,27 @@ function _M.int64(self, int)
 end
 
 
+function _M.nullable_str(self, str)
+    local req = self._req
+    local offset = self.offset
+    local str_len
+    local val
+    if not str or #str == 0 then
+        val = str_int16(-1)
+        str_len = 2
+    else
+        val = str
+        str_len = #str
+    end
+
+    req[offset] = str_int16(str_len)
+    req[offset + 1] = val
+
+    self.offset = offset + 2
+    -- extend the length for a int16 and the length of the string
+    self.len = self.len + 2 + str_len
+end
+
 function _M.string(self, str)
     local req = self._req
     local offset = self.offset
@@ -183,6 +206,7 @@ local function message_package(key, msg, message_version)
             str_int8(1),
             -- XX hard code no Compression
             str_int8(0),
+            -- timestamp
             str_int64(ffi.new("int64_t", (os.time() * 1000))), -- timestamp
             str_int32(key_len),
             key,
@@ -198,7 +222,6 @@ local function message_package(key, msg, message_version)
             -- XX hard code no Compression
             str_int8(0),
             str_int32(key_len),
-            key,
             str_int32(len),
             msg,
         }
@@ -217,7 +240,7 @@ function _M.message_set(self, messages, index)
     local index = index or #messages
 
     local message_version = MESSAGE_VERSION_0
-    if self.api_key == _M.ProduceRequest and self.api_version == API_VERSION_V2 then
+    if self.api_key == _M.ProduceRequest then
         message_version = MESSAGE_VERSION_1
     end
 
@@ -247,6 +270,5 @@ function _M.package(self)
 
     return req
 end
-
 
 return _M

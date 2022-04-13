@@ -40,7 +40,8 @@ end
 
 local function metadata_encode(client_id, topics, num, api_version)
     local id = 0    -- hard code correlation_id
-    local req = request:new(request.MetadataRequest, id, client_id, api_version)
+    local _api_version = api_version or 0
+    local req = request:new(request.MetadataRequest, id, client_id, _api_version)
 
     req:int32(num)
 
