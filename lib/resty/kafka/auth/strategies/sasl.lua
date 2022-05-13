@@ -10,6 +10,7 @@ local mt = { __index = _M }
 
 local MECHANISM_PLAINTEXT = "PLAIN"
 local MECHANISM_SCRAMSHA256 = "SCRAM-SHA-256"
+local MECHANISM_SCRAMSHA512 = "SCRAM-SHA-512"
 local SEP = string.char(0)
 
 local function normalize_username(username)
@@ -46,7 +47,7 @@ end
 local function _encode(mechanism, user, pwd, tokenauth)
     if mechanism  == MECHANISM_PLAINTEXT then
         return _encode_plaintext(user, pwd)
-    elseif mechanism== MECHANISM_SCRAMSHA256 then
+    elseif mechanism == MECHANISM_SCRAMSHA256 or mechanism == MECHANISM_SCRAMSHA512 then
         -- constructing the client-first-message
         user = normalize_username(user)
         return "n,,n="..user..",r="..c_nonce..",tokenauth=" .. tokenauth
@@ -124,7 +125,7 @@ local function be_tls_get_certificate_hash(sock)
     signature = signature:lower()
 
     if signature:match("md5") or signature:match("sha1") then
-    signature = "sha256"
+        signature = "sha256"
     end
 
     local openssl_x509 = require("resty.openssl.x509").new(pem, "PEM")
@@ -138,14 +139,15 @@ local function be_tls_get_certificate_hash(sock)
     return openssl_x509_digest
 end
 
-local function hmac(key, str)
-    -- HMAC(key, str): Apply the HMAC keyed hash algorithm (defined in
+local function hmac(key, str, hf)
+    -- HMAC(key, str, hf): Apply the HMAC keyed hash algorithm (defined in
     -- [RFC2104]) using the octet string represented by "key" as the key
-    -- and the octet string "str" as the input string.  The size of the
-    -- result is the hash result size for the hash function in use.  For
-    -- example, it is 20 octets for SHA-1 (see [RFC3174]).
+    -- and the octet string "str" as the input string. "hf" is the hashing
+    -- function used in the HMAC.
+    -- The size of the result is the hash result size for the hash
+    --  function in use. For example, it is 20 octets for SHA-1 (see [RFC3174]).
     local openssl_hmac = require "resty.openssl.hmac"
-    local hmac, err = openssl_hmac.new(key, "sha256")
+    local hmac, err = openssl_hmac.new(key, hf)
 
     if not (hmac) then
         return nil, tostring(err)
@@ -162,13 +164,14 @@ local function hmac(key, str)
     return final_hmac
 end
 
-local function h(str)
+local function h(str, hf)
     -- H(str): Apply the cryptographic hash function to the octet string
-    -- "str", producing an octet string as a result.  The size of the
+    -- "str", producing an octet string as a result.
+    -- "hf" is the hashing function used to produce the digest. The size of the
     -- result depends on the hash result size for the hash function in
     -- use.
-    local resty_sha256 = require "resty.sha256"
-    local openssl_digest = resty_sha256:new()
+    local resty_sha = require ("resty." .. hf)
+    local openssl_digest = resty_sha:new()
 
     if not (openssl_digest) then
         return nil, tostring("TODO err")
@@ -206,7 +209,7 @@ local function xor(a, b)
     return table.concat(result)
 end
 
-local function hi(str, salt, i)
+local function hi(str, salt, i, hf)
     -- Hi(str, salt, i):
 
     -- U1   := HMAC(str, salt + INT(1))
@@ -221,6 +224,9 @@ local function hi(str, salt, i)
     -- operator, and INT(g) is a 4-octet encoding of the integer g, most
     -- significant octet first.
 
+    -- "hf" is the hashing function used in the keyed HMAC. This has influence on
+    -- the `outlen` passed to the kdf function
+
     -- Hi() is, essentially, PBKDF2 [RFC2898] with HMAC() as the
     -- pseudorandom function (PRF) and with dkLen == output length of
     -- HMAC() == output length of H().
@@ -228,13 +234,22 @@ local function hi(str, salt, i)
 
     salt = ngx.decode_base64(salt)
 
+    local outlen
+    if hf == "sha256" then
+        outlen = 32
+    elseif hf == "sha512" then
+        outlen = 64
+    else
+        outlen = 32
+    end
+
     local key, err = openssl_kdf.derive({
         type = openssl_kdf.PBKDF2,
-        md = "sha256",
+        md = hf,
         salt = salt,
         pbkdf2_iter = i,
         pass = str,
-        outlen = 32 -- our H() produces a 32 byte hash value (SHA-256)
+        outlen = outlen -- our H() produces a 32 byte hash value for SHA-256 and 64 byte value for SHA-512
     })
 
     if not (key) then
@@ -246,6 +261,7 @@ end
 
 
 local function _sasl_auth(self, sock)
+    local hf
     local cli_id = "worker" .. pid()
     local req = request:new(request.SaslAuthenticateRequest, 0, cli_id, request.API_VERSION_V1)
     local mechanism = self.config.mechanism
@@ -280,8 +296,14 @@ local function _sasl_auth(self, sock)
         local bare = false
 
         if mechanism:match("SCRAM%-SHA%-256%-PLUS") then
+            -- hf -> hashing function
+            hf = "sha256"
             plus = true
         elseif mechanism:match("SCRAM%-SHA%-256") then
+            hf = "sha256"
+            bare = true
+        elseif mechanism:match("SCRAM%-SHA%-512") then
+            hf = "sha512"
             bare = true
         else
             return nil, "unsupported SCRAM mechanism name: " .. tostring(msg)
@@ -312,17 +334,17 @@ local function _sasl_auth(self, sock)
         if tonumber(iteration_count) < 4096 then
 			return nil, "Iteration count < 4096 which is the suggested minimum according to RFC 5802."
 		end
-        local salted_password, err = hi(password, user_salt, tonumber(iteration_count))
+        local salted_password, err = hi(password, user_salt, tonumber(iteration_count), hf)
         --  SaltedPassword  := Hi(Normalize(password), salt, i)
         if not (salted_password) then
             return nil, tostring(err)
         end
-        local client_key, err = hmac(salted_password, "Client Key")
+        local client_key, err = hmac(salted_password, "Client Key", hf)
         --  ClientKey       := HMAC(SaltedPassword, "Client Key")
         if not (client_key) then
             return nil, tostring(err)
         end
-        local stored_key, err = h(client_key)
+        local stored_key, err = h(client_key, hf)
         --  StoredKey       := H(ClientKey)
         if not (stored_key) then
             return nil, tostring(err)
@@ -332,7 +354,7 @@ local function _sasl_auth(self, sock)
         --  AuthMessage     := client-first-message-bare + "," +
         --                     server-first-message + "," +
         --                     client-final-message-without-proof
-        local client_signature, err = hmac(stored_key, auth_message)
+        local client_signature, err = hmac(stored_key, auth_message, hf)
         --  ClientSignature := HMAC(StoredKey, AuthMessage)
         if not (client_signature) then
             return nil, tostring(err)
@@ -361,14 +383,14 @@ local function _sasl_auth(self, sock)
             end
             return nil, "Unkown Error during _sasl_auth[client-final-message]"
         end
-        local server_key, err = hmac(salted_password, "Server Key")
+        local server_key, err = hmac(salted_password, "Server Key", hf)
         --  ServerKey       := HMAC(SaltedPassword, "Server Key")
 
         if not (server_key) then
             return nil, tostring(err)
         end
 
-        local server_signature, err = hmac(server_key, auth_message)
+        local server_signature, err = hmac(server_key, auth_message, hf)
         --  ServerSignature := HMAC(ServerKey, AuthMessage)
 
         if not (server_signature) then
