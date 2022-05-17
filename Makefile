@@ -34,8 +34,8 @@ test: devup
 devdown:
 	docker-compose -f dev/docker-compose.yaml -f dev/docker-compose.dev.yaml down --remove-orphans
 
-devshell:
-	docker-compose -f dev/docker-compose.yaml -f dev/docker-compose.dev.yaml exec openresty /bin/bash
+devshell: delegation-token
+	docker-compose -f dev/docker-compose.yaml -f dev/docker-compose.dev.yaml exec -e TOKENID=$(TOKENID) -e TOKENHMAC=$(TOKENHMAC) openresty /bin/bash
 
 devlogs:
 	docker-compose -f dev/docker-compose.yaml -f dev/docker-compose.dev.yaml logs
