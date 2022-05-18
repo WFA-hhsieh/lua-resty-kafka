@@ -21,7 +21,7 @@ if not ok then
 end
 
 
-local _M = { _VERSION = "0.12" }
+local _M = { _VERSION = "0.13" }
 local mt = { __index = _M }
 
 
@@ -172,9 +172,9 @@ local function _fetch_apiversions(self)
                         ", host: ", host, ", port: ", port)
         else
             --[[
-            ApiVersions Response (Version: 0) => error_code [api_keys] 
+            ApiVersions Response (Version: 0) => error_code [api_keys]
             error_code => INT16
-            api_keys => api_key min_version max_version 
+            api_keys => api_key min_version max_version
                 api_key => INT16
                 min_version => INT16
                 max_version => INT16
@@ -232,7 +232,7 @@ function _M.new(self, broker_list, client_config)
         client_priv_key = opts.client_priv_key or nil,
     }
 
-    
+
     local cli = setmetatable({
         broker_list = broker_list,
         topic_partitions = {},
