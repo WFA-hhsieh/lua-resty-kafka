@@ -26,6 +26,7 @@ Table of Contents
 - [Installation](#installation)
 - [Development](#development)
 - [Testing](#testing)
+  - [Microsoft Eventhub Testing](#microsoft-eventhub-testing)
 - [Author](#author)
 - [Copyright and License](#copyright-and-license)
 - [See Also](#see-also)
@@ -41,6 +42,7 @@ comes with a set of additional features.
 * SASL support
   * PLAIN
   * SCRAM-SHA-256
+  * SCRAM-SHA-512
   * Delegation Tokens
 
 For these features to work you need a patched version of openresty. [See this source](https://github.com/Kong/kong-build-tools/tree/master/openresty-patches/patches/1.19.3.2)
@@ -196,10 +198,10 @@ client config
     A lua table value that specifies authentication settings:
     ```lua
 
-        local auth_config = { 
-            strategy = "sasl", 
-            mechanism="PLAIN", -- [oneOf = ['PLAIN', 'SCRAM-SHA-256']]
-            user="admin", 
+        local auth_config = {
+            strategy = "sasl",
+            mechanism="PLAIN", -- [oneOf = ['PLAIN', 'SCRAM-SHA-256', 'SCRAM-SHA-512']]
+            user="admin",
             password="admin-secret",
             tokenauth="true" -- <bool> needs to be "true" when authenticating with delegation tokens, defaults to "false"
             }
@@ -412,7 +414,7 @@ You can run tests with
 
 `make test`
 
-or 
+or
 
 `make devshell`
 
