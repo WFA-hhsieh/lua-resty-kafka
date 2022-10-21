@@ -21,6 +21,34 @@ describe("Test producers: ", function()
     assert.is.equal(diff, 1)
   end)
 
+  it("avoid duplicate messages in sync mode", function()
+    local spawn = ngx.thread.spawn
+    local wait = ngx.thread.wait
+    local kill = ngx.thread.kill
+
+    local function co_send(p, num)
+      local offset, err = p:send(TEST_TOPIC, key, message .. num)
+      assert.is_nil(err)
+
+      return offset
+    end
+
+    local p, err = producer:new(broker_list_plain, { producer_type = "sync" })
+    assert.is_nil(err)
+
+    local co1 = spawn(co_send, p, 1)
+    local co2 = spawn(co_send, p, 2)
+
+    local _, res1 = wait(co1)
+    local _, res2 = wait(co2)
+
+    local diff = tonumber(res1) - tonumber(res2)
+    assert.is.equal(math.abs(diff), 1)
+
+    kill(co1)
+    kill(co2)
+  end)
+
   it("sends two messages to two different topics", function()
     local p, err = producer:new(broker_list_plain)
     assert.is_nil(err)
@@ -121,7 +149,7 @@ describe("Test producers: ", function()
     assert.is.equal(offset_diff, 2)
   end)
 
-  it("is not retryable ", function() 
+  it("is not retryable ", function()
     local p = producer:new(broker_list_plain, { producer_type = "async", flush_time = 10000})
     ngx.sleep(0.01)
     local size, err = p:send(TEST_TOPIC, key, message)
