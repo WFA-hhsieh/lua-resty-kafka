@@ -156,8 +156,7 @@ local function _flush_unlock(self)
 end
 
 
-local function _send(self, broker_conf, topic_partitions)
-    local sendbuffer = self.sendbuffer
+local function _send(self, broker_conf, topic_partitions, sendbuffer)
     local resp, retryable = nil, true
 
     local bk, err = broker:new(broker_conf.host, broker_conf.port, self.socket_config, self.auth_config)
@@ -211,13 +210,19 @@ local function _batch_send(self, sendbuffer)
         -- aggregator
         local send_num, sendbroker = sendbuffer:aggregator(self.client)
         if send_num == 0 then
-            break
+            if sendbuffer:done() then
+                return true
+
+            else
+                ngx_log(DEBUG, "sendbuffeer queue_num = ", sendbuffer.queue_num, ", race conditions might occur")
+                return
+            end
         end
 
         for i = 1, send_num, 2 do
             local broker_conf, topic_partitions = sendbroker[i], sendbroker[i + 1]
 
-            _send(self, broker_conf, topic_partitions)
+            _send(self, broker_conf, topic_partitions, sendbuffer)
         end
 
         if sendbuffer:done() then
@@ -379,6 +384,8 @@ function _M.new(self, broker_list, producer_config, cluster_name)
         socket_config = cli.socket_config,
         auth_config = cli.auth_config,
         _timer_flushing_buffer = false,
+        batch_num = opts.batch_num or 200,
+        batch_size = opts.batch_size or 1048576,
         ringbuffer = ringbuffer:new(opts.batch_num or 200, opts.max_buffering or 50000),   -- 200, 50K
         sendbuffer = sendbuffer:new(opts.batch_num or 200, opts.batch_size or 1048576)
                         -- default: 1K, 1M
@@ -398,10 +405,30 @@ function _M.new(self, broker_list, producer_config, cluster_name)
     return p, nil
 end
 
+local function _sync_send(self, topic, key, message)
+    local partition_id, err = choose_partition(self, topic, key)
+    if not partition_id then
+        return nil, err
+    end
+
+    -- avoid race conditions
+    -- different sendbuffers share self.client in _batch_send()
+    local sendbuffer = sendbuffer:new(self.batch_num, self.batch_size)
+    sendbuffer:add(topic, partition_id, key, message)
+
+    local ok = _batch_send(self, sendbuffer)
+    if not ok then
+        sendbuffer:clear(topic, partition_id)
+        return nil, sendbuffer:err(topic, partition_id)
+    end
+
+    return sendbuffer:offset(topic, partition_id)
+end
 
 -- offset is cdata (LL in luajit)
 function _M.send(self, topic, key, message)
     if self.async then
+        -- async mode
         local ringbuffer = self.ringbuffer
 
         local ok, err = ringbuffer:add(topic, key, message)
@@ -414,23 +441,11 @@ function _M.send(self, topic, key, message)
         end
 
         return true
+
+    else
+        -- sync mode
+        return _sync_send(self, topic, key, message)
     end
-
-    local partition_id, err = choose_partition(self, topic, key)
-    if not partition_id then
-        return nil, err
-    end
-
-    local sendbuffer = self.sendbuffer
-    sendbuffer:add(topic, partition_id, key, message)
-
-    local ok = _batch_send(self, sendbuffer)
-    if not ok then
-        sendbuffer:clear(topic, partition_id)
-        return nil, sendbuffer:err(topic, partition_id)
-    end
-
-    return sendbuffer:offset(topic, partition_id)
 end
 
 
