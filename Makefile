@@ -1,5 +1,4 @@
-OPENRESTY_PREFIX=/usr/local/openresty-debug
-
+OPENRESTY_PREFIX=/usr/local/openresty
 SHELL := /bin/bash
 PREFIX ?=          /usr/local
 LUA_INCLUDE_DIR ?= $(PREFIX)/include
@@ -27,7 +26,7 @@ setup-certs:
 devup: setup-certs
 	docker-compose -f dev/docker-compose.yaml  -f dev/docker-compose.dev.yaml up -d
 
-test: devup
+test:
 	docker-compose -f dev/docker-compose.yaml -f dev/docker-compose.dev.yaml exec -T openresty luarocks make
 	docker-compose -f dev/docker-compose.yaml -f dev/docker-compose.dev.yaml exec -T -e TOKENID=$(TOKENID) -e TOKENHMAC=$(TOKENHMAC) openresty busted
 

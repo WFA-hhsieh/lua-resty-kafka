@@ -11,12 +11,18 @@ local broker_list_plain = {
 local f = assert(io.open("/certs/certchain.crt"))
 local cert_data = f:read("*a")
 f:close()
+if not cert_data then
+  print("failed to read cert data from file")
+end
 local cert, _ = ssl.parse_pem_cert(cert_data)
 
 -- Load private key
 local f = assert(io.open("/certs/privkey.key"))
 local key_data = f:read("*a")
 f:close()
+if not key_data then
+  print("failed to read key data from file")
+end
 local priv_key, _ = ssl.parse_pem_priv_key(key_data)
 
 -- move to fixture dir or helper file

@@ -96,7 +96,7 @@ trust_store_private_key_file=""
 
   # don't need the cert because it's in the trust store.
   # PATCH: I do
-  # rm $TRUSTSTORE_WORKING_DIRECTORY/$CA_CERT_FILE
+  # rm -f $TRUSTSTORE_WORKING_DIRECTORY/$CA_CERT_FILE
 
 echo
 echo "Continuing with:"
@@ -158,7 +158,7 @@ do
   echo
   keytool -keystore $KEYSTORE_WORKING_DIRECTORY/$keystore -alias CARoot \
     -import -file $CA_CERT_FILE -keypass $PASS -storepass $PASS -noprompt
-  rm $CA_CERT_FILE # delete the trust store cert because it's stored in the trust store.
+  rm -f $CA_CERT_FILE # delete the trust store cert because it's stored in the trust store.
 
   echo
   echo "Now the keystore's signed certificate will be imported back into the keystore."
@@ -176,9 +176,9 @@ do
   echo " - '$KEYSTORE_SIGNED_CERT': the keystore's certificate, signed by the CA, and stored back"
   echo "    into the keystore"
 
-    rm $KEYSTORE_SIGN_REQUEST_SRL
-    rm $KEYSTORE_SIGN_REQUEST
-    rm $KEYSTORE_SIGNED_CERT
+    rm -f $KEYSTORE_SIGN_REQUEST_SRL
+    rm -f $KEYSTORE_SIGN_REQUEST
+    rm -f $KEYSTORE_SIGNED_CERT
 
 
 done

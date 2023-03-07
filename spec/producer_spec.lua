@@ -1,5 +1,8 @@
 local producer = require "resty.kafka.producer"
+local tablex = require "pl.tablex"
 
+local tostring = tostring
+local tx_deepcopy = tablex.deepcopy
 local broker_list_plain = BROKER_LIST
 local key = KEY
 local message = MESSAGE
@@ -47,6 +50,39 @@ describe("Test producers: ", function()
 
     kill(co1)
     kill(co2)
+  end)
+
+  it("avoid cached producer when cluster config is updated", function()
+    local producer_config = { producer_type = "async" }
+    local cluster_name = "kong"
+    local p1, p2, p3, p4, p5, err
+
+    p1, err = producer:new(broker_list_plain, producer_config, cluster_name)
+    assert.is_nil(err)
+
+    -- avoid cache and error
+    local broker_list_plain_new = tx_deepcopy(broker_list_plain)
+    broker_list_plain_new[1].port = 9091
+    p2, err = producer:new(broker_list_plain_new, producer_config, cluster_name)
+    assert.is_nil(p2)
+    assert.are.equal("Could not retrieve version map from cluster", err)
+
+    -- empty broker list
+    p3, err = producer:new(nil, producer_config, cluster_name)
+    assert.is_nil(p3)
+    assert.are.equal("Could not retrieve version map from cluster", err)
+
+    -- reuse cache
+    local broker_list_plain_dup = tx_deepcopy(broker_list_plain)
+    p4, err = producer:new(broker_list_plain_dup, producer_config, cluster_name)
+    assert.is_nil(err)
+    assert.are.equal(p4, p1)
+
+    -- avoid cache and create new
+    local broker_list_plain_dup = tx_deepcopy(broker_list_plain)
+    p5, err = producer:new(broker_list_plain_dup, { request_timeout = 1000 } , cluster_name)
+    assert.is_nil(err)
+    assert.are_not.equals(p5, p1)
   end)
 
   it("sends two messages to two different topics", function()
