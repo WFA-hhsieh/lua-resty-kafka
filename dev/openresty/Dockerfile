@@ -25,15 +25,11 @@ RUN    apt-get -y install wget vim git libpq-dev tcpdump lua5.1 liblua5.1-dev un
 RUN  apt-get -y build-dep nginx \
   && apt-get -q -y clean && rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/*
 RUN  wget https://openresty.org/download/openresty-1.21.4.2.tar.gz \
-  && wget https://github.com/Kong/kong/archive/master.tar.gz \
   && tar zxvf openresty-1.21.4.2.tar.gz \
-  && tar zvfx master.tar.gz \
   && cd openresty-1.21.4.2 \
-  && for i in ../kong-master/build/openresty/patches/*.patch; do patch -p1 < $i; done \
-  && ./configure --with-luajit  --with-http_addition_module --with-http_dav_module --with-http_geoip_module --with-http_gzip_static_module --with-http_image_filter_module --with-http_realip_module --with-http_stub_status_module --with-http_ssl_module --with-http_sub_module --with-http_xslt_module --with-ipv6 --with-http_postgres_module --with-pcre-jit \
+  && ./configure  --with-luajit  --with-http_addition_module --with-http_dav_module --with-http_geoip_module --with-http_gzip_static_module --with-http_image_filter_module --with-http_realip_module --with-http_stub_status_module --with-http_ssl_module --with-http_sub_module --with-http_xslt_module --with-ipv6 --with-http_postgres_module --with-pcre-jit \
   && make \
   && make install
-
 
 ENV PATH $PATH:/usr/local/openresty/nginx/sbin
 RUN ln -s /usr/local/openresty/nginx/sbin/nginx /usr/sbin/nginx
