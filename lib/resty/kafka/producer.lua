@@ -465,13 +465,13 @@ function _M.new(self, broker_list, producer_config, cluster_name)
     end
 
     local cli = client:new(broker_list, opts)
-    -- Supported API versions obtained from a broker are only valid for the connection on which that information is obtained. In the event of disconnection, the client should obtain the information from the broker again, as the broker might have been upgraded/downgraded in the mean time.
-    cli:fetch_apiversions()
+    -- -- Supported API versions obtained from a broker are only valid for the connection on which that information is obtained. In the event of disconnection, the client should obtain the information from the broker again, as the broker might have been upgraded/downgraded in the mean time.
+    -- cli:fetch_apiversions()
 
-    local api_version, neg_err = negotiate_api_version(cli.supported_api_versions, API_KEY, 3)
-    if not api_version then
-        return nil, neg_err
-    end
+    -- local api_version, neg_err = negotiate_api_version(cli.supported_api_versions, API_KEY, 3)
+    -- if not api_version then
+    --     return nil, neg_err
+    -- end
 
     local p = setmetatable({
         client = cli,

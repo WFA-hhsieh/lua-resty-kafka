@@ -1,7 +1,7 @@
-package = "kong-lua-resty-kafka"
+package = "wifi-lua-resty-kafka"
 version = "0.20-0"
 source = {
-   url = "git+https://github.com/Kong/lua-resty-kafka",
+   url = "git+https://github.com/WFA-hhsieh/lua-resty-kafka",
    tag = "v0.20"
 }
 description = {
