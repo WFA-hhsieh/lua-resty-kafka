@@ -26,7 +26,7 @@ description = {
 
      Note that at least ngx_lua 0.9.3 or ngx_openresty 1.4.3.7 is required, and unfortunately only LuaJIT supported (--with-luajit).
    ]],
-   homepage = "https://github.com/kong/lua-resty-kafka",
+   homepage = "https://github.com/WFA-hhsieh/lua-resty-kafka",
    license = "BSD"
 }
 dependencies = {
